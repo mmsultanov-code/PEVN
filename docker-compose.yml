@@ -1,0 +1,102 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:16.1
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=newtemptestbase
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+  pgadmin:
+    image: dpage/pgadmin4:2023-11-20-2
+    ports:
+      - 8082:80
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=root
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    entrypoint: /bin/sh -c "chmod 600 /pgpass; /entrypoint.sh;"
+    user: root
+    configs:
+      - source: servers.json
+        target: /pgadmin4/servers.json
+      - source: pgpass
+        target: /pgpass
+  admin-api:
+    build:
+      context: ./admin-api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DB_USER=postgres
+      - DB_PASS=root
+      - DB_NAME=newtemptestbase
+      - DB_PORT=5432
+      - DB_HOST=db
+      - PORT=8000
+      - JWT_SECRET_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+      - expiresIn=1h
+  front-api:
+    build:
+      context: ./front-api
+      dockerfile: Dockerfile
+    ports:
+      - "7000:7000"
+    depends_on:
+      - db
+    environment:
+      - DB_USER=postgres
+      - DB_PASS=root
+      - DB_NAME=newtemptestbase
+      - DB_PORT=5432
+      - DB_HOST=db
+      - PORT=7000
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - admin-api
+    environment:
+      - BASE_URL=localhost:8080
+      - VUE_APP_DOMAIN=localhost
+      - VUE_APP_BASE_URL=http://localhost:8000
+      - VUE_APP_API_URL=http://localhost:8000/api
+      - VUE_APP_PUBLIC=http://localhost:8000
+      - VUE_APP_FRONT_URL=http://localhost:3000
+
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - front-api
+    environment:
+      - VUE_APP_API_URL=http://localhost:7000/api
+      - VUE_APP_BACK_URL=http://localhost:8000
+
+configs:
+  pgpass:
+    content: db:5432:*:postgres:postgres
+  servers.json:
+    content: |
+      {"Servers": {"1": {
+        "Group": "Servers",
+        "Name": "My Local Postgres 16.1",
+        "Host": "db",
+        "Port": 5432,
+        "MaintenanceDB": "newtemptestbase",
+        "Username": "postgres",
+        "PassFile": "/pgpass",
+        "SSLMode": "prefer"
+      }}}
