@@ -3,26 +3,28 @@
         <span class="post-thumbnail" v-if="thumbnail && type !== 'single'">
             <img :src="thumbnail" alt="" />
         </span>
-        <span class="post-thumbnail single" v-if="post_thumbnail && type === 'single'">
-            <img :src="post_thumbnail" alt="" />
+        <span class="post-thumbnail single" v-if="(post_thumbnail || post?.background_image) && type === 'single'">
+            <img :src="post_thumbnail || post.background_image" alt="" />
         </span>
         <span class="post-content">
             <span class="top-side">
-                <strong class="title" v-html="name"></strong>
-                <p v-if="excerpt && type !== 'single'" v-html="excerpt_text_by_words(excerpt, 10)"></p>
-                <div v-if="type === 'single' && content" v-html="content" class="post-content-inside"></div>
+                <strong class="title" v-html="name || post?.name"></strong>
+                <p v-if="excerpt && type !== 'single'" v-html="excerpt_text_by_words(excerpt || post?.excerpt, 10)"></p>
+                <div v-if="type === 'single' && (content || post?.content)" v-html="content || post?.content" class="post-content-inside"></div>
             </span>
             <span v-if="type !== 'single'" class="theme-button bordered">Подробнее</span>
         </span>
     </component>
 </template>
 <script>
+import axios from 'axios'
+
 export default {
     name: 'event-box',
     props: {
         cname: {
             type: String,
-            required: true,
+            required: false,
             default: 'router-link'
         },
         post_thumbnail: {
@@ -50,12 +52,29 @@ export default {
             required: false
         }
     },
+    data() {
+        return {
+            post: null
+        }
+    },
     computed: {
-        frontUrl: function() {
-            return process.env.VUE_APP_FRONT_URL
-        },
+		baseUrl: function() {
+			return process.env.VUE_APP_BACK_URL
+		}
+    },
+    mounted() {
+        if(this.type === 'single' && this.$route.params.slug)
+            this.init()
     },
     methods: {
+        init: async function() {
+            try {
+                const response = await axios.get('/posts/' + this.$route.params.slug)
+                this.post = {...response.data, background_image: this.baseUrl + response.data.background_image}
+            } catch(err) {
+                throw err
+            }
+        },
         excerpt_text_by_words: function (string, length) {
             if (string.split(' ').length > length) {
                 return string?.replace(/<[^>]*>/g, '').split(' ').slice(0, length).join(' ') + '...'
