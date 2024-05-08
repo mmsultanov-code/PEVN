@@ -16,7 +16,7 @@ const initializeDatabase = async () => {
     try {
         await sequelize.sync({ alter: true });
         console.log('All models were synchronized successfully.');
-        // await initializeSeeders();
+        await initializeSeeders();
     } catch (error) {
         console.error('Unable to synchronize the models:', error);
     }
