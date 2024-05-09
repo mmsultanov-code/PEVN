@@ -11,6 +11,7 @@ COPY . .
 
 RUN npm install
 RUN npm install nodemon
+RUN npm install bcrypt
 
 EXPOSE 7000
 
